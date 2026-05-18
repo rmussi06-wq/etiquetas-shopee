@@ -1,0 +1,7 @@
+name = "zpl-proxy"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+# Substitua pelo seu Account ID (32 caracteres hexadecimais)
+# Encontre em: dash.cloudflare.com → barra lateral direita
+account_id = "SEU_ACCOUNT_ID_AQUI"
