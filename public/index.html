@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Etiquetas Shopee · ZPL → PDF</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/libarchive.js/1.3.0/libarchive.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0a0a0f;
+      --bg2:         #12121a;
+      --bg3:         #1a1a26;
+      --border:      #2a2a3a;
+      --accent:      #00e5a0;
+      --accent-dim:  rgba(0, 229, 160, 0.12);
+      --accent-glow: rgba(0, 229, 160, 0.30);
+      --text:        #e8e8f0;
+      --muted:       #7a7a99;
+      --danger:      #ff4d6d;
+      --danger-dim:  rgba(255, 77, 109, 0.12);
+      --warn:        #ffb800;
+      --warn-dim:    rgba(255, 184, 0, 0.12);
+    }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    h1, h2, h3, h4 { font-family: 'Syne', sans-serif; }
+
+    /* ── Header ──────────────────────────────────── */
+    .header {
+      border-bottom: 1px solid var(--border);
+      padding: 1.75rem 1.5rem 1.5rem;
+    }
+    .header-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .logo {
+      width: 44px; height: 44px;
+      background: var(--accent);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-size: 1.45rem;
+      font-weight: 800;
+    }
+    .header h1 span { color: var(--accent); }
+    .header-sub {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+
+    /* ── Main ────────────────────────────────────── */
+    .main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* ── Worker URL warning ──────────────────────── */
+    .worker-notice {
+      background: var(--warn-dim);
+      border: 1px solid rgba(255, 184, 0, 0.3);
+      color: var(--warn);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font-size: 0.78rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      gap: 0.6rem;
+      align-items: flex-start;
+    }
+    .worker-notice code {
+      background: rgba(255,184,0,0.2);
+      padding: 0.1em 0.4em;
+      border-radius: 4px;
+      font-size: 0.75rem;
+    }
+    .worker-notice.hidden { display: none; }
+
+    /* ── Upload zone ─────────────────────────────── */
+    .upload-zone {
+      position: relative;
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      background: var(--bg2);
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .upload-zone:hover,
+    .upload-zone.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .upload-zone input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer;
+      width: 100%; height: 100%;
+    }
+    .upload-icon {
+      font-size: 2.8rem;
+      display: block;
+      margin-bottom: 1rem;
+    }
+    .upload-zone h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+    .upload-zone .upload-sub {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    .ext-badge {
+      display: inline-block;
+      background: var(--accent-dim);
+      color: var(--accent);
+      border: 1px solid var(--accent-glow);
+      padding: 0.15rem 0.55rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      margin-top: 0.8rem;
+      font-weight: 500;
+    }
+
+    /* ── Banners ─────────────────────────────────── */
+    .banner {
+      border-radius: 10px;
+      padding: 0.8rem 1rem;
+      margin-top: 1rem;
+      font-size: 0.82rem;
+      display: none;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+    .banner.visible { display: flex; }
+    .banner-error {
+      background: var(--danger-dim);
+      border: 1px solid rgba(255,77,109,0.3);
+      color: var(--danger);
+    }
+    .banner-info {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent-glow);
+      color: var(--accent);
+    }
+
+    /* ── Settings ────────────────────────────────── */
+    .settings {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin-top: 1.5rem;
+    }
+    .settings-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 1rem;
+    }
+    .field { display: flex; flex-direction: column; gap: 0.35rem; }
+    .field label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .field select,
+    .field input[type="number"] {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.88rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+    .field select:focus,
+    .field input[type="number"]:focus { border-color: var(--accent); }
+    .field select option { background: var(--bg3); }
+
+    /* ── File list ───────────────────────────────── */
+    .file-list { margin-top: 1.75rem; display: none; }
+    .file-list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .file-list-title { font-size: 1.05rem; font-weight: 700; }
+    .file-count {
+      font-size: 0.7rem;
+      color: var(--muted);
+      background: var(--bg3);
+      padding: 0.2rem 0.65rem;
+      border-radius: 20px;
+    }
+
+    /* ── File item ───────────────────────────────── */
+    .file-item {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 0.75rem;
+      overflow: hidden;
+      transition: border-color 0.2s;
+      animation: fadeIn 0.25s ease forwards;
+    }
+    .file-item:hover { border-color: rgba(0,229,160,0.3); }
+
+    .file-item-row {
+      padding: 0.9rem 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .file-name-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.88rem;
+      min-width: 0;
+    }
+    .file-icon { font-size: 1rem; flex-shrink: 0; }
+    .file-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 280px;
+    }
+
+    .file-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    /* status badge */
+    .status {
+      font-size: 0.68rem;
+      padding: 0.18rem 0.55rem;
+      border-radius: 20px;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .status-idle   { background: var(--bg3); color: var(--muted); }
+    .status-load   { background: var(--warn-dim); color: var(--warn); border: 1px solid rgba(255,184,0,.3); }
+    .status-done   { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-glow); }
+    .status-error  { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(255,77,109,.3); }
+
+    /* ── Buttons ─────────────────────────────────── */
+    .btn {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 500;
+      padding: 0.42rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary {
+      background: var(--accent); color: #0a0a0f; font-weight: 700;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #00ffb3;
+      box-shadow: 0 0 18px var(--accent-glow);
+    }
+    .btn-outline {
+      background: transparent;
+      color: var(--accent);
+      border-color: var(--accent-glow);
+    }
+    .btn-outline:hover:not(:disabled) { background: var(--accent-dim); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border-color: var(--border);
+    }
+    .btn-ghost:hover:not(:disabled) { color: var(--text); border-color: var(--muted); }
+
+    /* ── PDF preview panel ───────────────────────── */
+    .preview-panel {
+      border-top: 1px solid var(--border);
+      background: var(--bg3);
+      display: none;
+    }
+    .preview-panel.open { display: block; }
+    .preview-toolbar {
+      padding: 0.6rem 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .pdf-canvas-wrap {
+      overflow-y: auto;
+      max-height: 500px;
+      background: #ddd;
+      text-align: center;
+      padding: 1rem;
+    }
+    .pdf-canvas-wrap canvas {
+      max-width: 100%;
+      display: block;
+      margin: 0 auto 0.5rem;
+      border-radius: 4px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+
+    /* ── Bulk actions ────────────────────────────── */
+    .bulk-actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    /* ── Spinner ─────────────────────────────────── */
+    .spinner {
+      width: 10px; height: 10px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.55s linear infinite;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Footer ──────────────────────────────────── */
+    .footer {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      color: var(--muted);
+      font-size: 0.72rem;
+      border-top: 1px solid var(--border);
+    }
+    .footer strong { color: var(--accent); }
+
+    /* ── Responsive ──────────────────────────────── */
+    @media (max-width: 600px) {
+      .header { padding: 1.25rem 1rem; }
+      .main { padding: 1.25rem 1rem 3rem; }
+      .upload-zone { padding: 2rem 1rem; }
+      .file-item-row { flex-direction: column; align-items: flex-start; }
+      .file-name { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─────────────────────────── HEADER ──────────────────────────── -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">📦</div>
+    <div>
+      <h1>Etiquetas <span>Shopee</span></h1>
+      <p class="header-sub">Conversor ZPL → PDF · extração de RAR 100% no browser</p>
+    </div>
+  </div>
+</header>
+
+<!-- ─────────────────────────── MAIN ────────────────────────────── -->
+<main class="main">
+
+  <!-- Worker URL notice (shown when URL is placeholder) -->
+  <div class="worker-notice" id="workerNotice">
+    <span>⚠</span>
+    <span>
+      Worker URL não configurada. Faça o deploy do Worker e atualize
+      <code>WORKER_URL</code> em <code>index.html</code>.
+      As conversões não funcionarão até então.
+    </span>
+  </div>
+
+  <!-- Upload zone -->
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept=".rar">
+    <span class="upload-icon">📥</span>
+    <h2 id="uploadTitle">Arraste o arquivo .rar aqui</h2>
+    <p class="upload-sub" id="uploadSub">ou clique para selecionar</p>
+    <span class="ext-badge">.rar</span>
+  </div>
+
+  <!-- Banners -->
+  <div class="banner banner-error" id="errorBanner">
+    <span>⚠</span><span id="errorMsg"></span>
+  </div>
+  <div class="banner banner-info" id="infoBanner">
+    <span>✓</span><span id="infoMsg"></span>
+  </div>
+
+  <!-- Settings -->
+  <div class="settings">
+    <div class="settings-title">Configurações de Conversão</div>
+    <div class="settings-grid">
+      <div class="field">
+        <label>Densidade</label>
+        <select id="dpmm">
+          <option value="6dpmm">6 dpmm</option>
+          <option value="8dpmm" selected>8 dpmm (padrão)</option>
+          <option value="12dpmm">12 dpmm</option>
+          <option value="24dpmm">24 dpmm</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Largura (pol.)</label>
+        <input type="number" id="labelWidth" value="4" min="0.1" max="15" step="0.5">
+      </div>
+      <div class="field">
+        <label>Altura (pol.)</label>
+        <input type="number" id="labelHeight" value="6" min="0.1" max="15" step="0.5">
+      </div>
+    </div>
+  </div>
+
+  <!-- File list -->
+  <div class="file-list" id="fileList">
+    <div class="file-list-header">
+      <h2 class="file-list-title">Arquivos ZPL Encontrados</h2>
+      <span class="file-count" id="fileCount">0 arquivos</span>
+    </div>
+    <div id="fileItems"></div>
+    <div class="bulk-actions">
+      <button class="btn btn-primary" id="convertAllBtn" onclick="convertAll()">
+        ⬇ Baixar Todos
+      </button>
+      <button class="btn btn-ghost" onclick="clearAll()">
+        ✕ Limpar
+      </button>
+    </div>
+  </div>
+
+</main>
+
+<!-- ─────────────────────────── FOOTER ──────────────────────────── -->
+<footer class="footer">
+  <p>Powered by <strong>Labelary API</strong> · ZPL extraído no browser · nenhum arquivo enviado a terceiros</p>
+</footer>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────────────────────
+const WORKER_URL = 'https://zpl-proxy.SEU_USUARIO.workers.dev';
+
+// ── Init CDNs ──────────────────────────────────────────────────────────────────
+Archive.init({
+  workerUrl: 'https://cdnjs.cloudflare.com/ajax/libs/libarchive.js/1.3.0/worker-bundle.js'
+});
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── Show worker notice if URL not configured ───────────────────────────────────
+if (WORKER_URL.includes('SEU_USUARIO')) {
+  document.getElementById('workerNotice').classList.remove('hidden');
+} else {
+  document.getElementById('workerNotice').classList.add('hidden');
+}
+
+// ── State ──────────────────────────────────────────────────────────────────────
+// Each entry: { name: string, content: string }
+let zplFiles = [];
+
+// ── UI helpers ─────────────────────────────────────────────────────────────────
+function showError(msg) {
+  const b = document.getElementById('errorBanner');
+  document.getElementById('errorMsg').textContent = msg;
+  b.classList.add('visible');
+  setTimeout(() => b.classList.remove('visible'), 9000);
+}
+
+function showInfo(msg) {
+  const b = document.getElementById('infoBanner');
+  document.getElementById('infoMsg').textContent = msg;
+  b.classList.add('visible');
+  setTimeout(() => b.classList.remove('visible'), 5000);
+}
+
+function getSettings() {
+  return {
+    dpmm:   document.getElementById('dpmm').value,
+    width:  parseFloat(document.getElementById('labelWidth').value)  || 4,
+    height: parseFloat(document.getElementById('labelHeight').value) || 6,
+  };
+}
+
+// ── Drag-and-drop ──────────────────────────────────────────────────────────────
+const uploadZone = document.getElementById('uploadZone');
+const fileInput  = document.getElementById('fileInput');
+
+uploadZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  uploadZone.classList.add('drag-over');
+});
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+// ── RAR extraction ─────────────────────────────────────────────────────────────
+async function handleFile(file) {
+  if (!file.name.toLowerCase().endsWith('.rar')) {
+    showError('Por favor, selecione um arquivo .rar válido.');
+    return;
+  }
+
+  zplFiles = [];
+  document.getElementById('fileItems').innerHTML = '';
+  document.getElementById('fileList').style.display = 'none';
+  document.getElementById('errorBanner').classList.remove('visible');
+
+  const title = document.getElementById('uploadTitle');
+  const sub   = document.getElementById('uploadSub');
+  title.textContent = file.name;
+  sub.textContent   = 'Extraindo arquivos ZPL…';
+
+  try {
+    const archive  = await Archive.open(file);
+    const extracted = await archive.extractFiles();
+
+    const entries = [];
+    collectZpl(extracted, entries);
+
+    if (entries.length === 0) {
+      showError('Nenhum arquivo .zpl encontrado no RAR.');
+      title.textContent = 'Arraste o arquivo .rar aqui';
+      sub.textContent   = 'ou clique para selecionar';
+      return;
+    }
+
+    zplFiles = await Promise.all(
+      entries.map(async e => ({ name: e.name, content: await e.file.text() }))
+    );
+
+    sub.textContent = `${zplFiles.length} arquivo(s) ZPL encontrado(s)`;
+    renderFileList();
+
+  } catch (err) {
+    console.error(err);
+    showError('Erro ao extrair o RAR: ' + err.message);
+    title.textContent = 'Arraste o arquivo .rar aqui';
+    sub.textContent   = 'ou clique para selecionar';
+  }
+}
+
+function collectZpl(obj, result) {
+  for (const [key, val] of Object.entries(obj)) {
+    if (val instanceof File) {
+      if (key.toLowerCase().endsWith('.zpl')) result.push({ name: key, file: val });
+    } else if (val && typeof val === 'object' && !(val instanceof File)) {
+      collectZpl(val, result);
+    }
+  }
+}
+
+// ── Render file list ───────────────────────────────────────────────────────────
+function renderFileList() {
+  const container = document.getElementById('fileItems');
+  container.innerHTML = '';
+
+  zplFiles.forEach((f, idx) => {
+    const item = document.createElement('div');
+    item.className = 'file-item';
+    item.id = `item-${idx}`;
+    item.innerHTML = `
+      <div class="file-item-row">
+        <div class="file-name-wrap">
+          <span class="file-icon">🏷</span>
+          <span class="file-name" title="${esc(f.name)}">${esc(f.name)}</span>
+        </div>
+        <div class="file-actions">
+          <span class="status status-idle" id="status-${idx}">aguardando</span>
+          <button class="btn btn-outline" onclick="previewFile(${idx})" id="prev-${idx}">
+            👁 Pré-visualizar
+          </button>
+          <button class="btn btn-primary" onclick="downloadFile(${idx})" id="dl-${idx}">
+            ⬇ Baixar PDF
+          </button>
+        </div>
+      </div>
+      <div class="preview-panel" id="preview-${idx}">
+        <div class="preview-toolbar">
+          <span id="preview-info-${idx}">PDF</span>
+          <button class="btn btn-ghost" style="padding:.25rem .6rem;font-size:.7rem"
+            onclick="closePreview(${idx})">✕ fechar</button>
+        </div>
+        <div class="pdf-canvas-wrap" id="canvas-wrap-${idx}"></div>
+      </div>
+    `;
+    container.appendChild(item);
+  });
+
+  document.getElementById('fileCount').textContent =
+    `${zplFiles.length} arquivo${zplFiles.length !== 1 ? 's' : ''}`;
+  document.getElementById('fileList').style.display = 'block';
+}
+
+function esc(str) {
+  return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ── Conversion helpers ─────────────────────────────────────────────────────────
+async function convertZpl(zplContent, dpmm, width, height) {
+  const response = await fetch(`${WORKER_URL}/convert`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ zpl: zplContent, dpmm, width, height }),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Erro ${response.status}: ${text}`);
+  }
+  return await response.blob();
+}
+
+function setStatus(idx, type, label) {
+  const el = document.getElementById(`status-${idx}`);
+  el.className = `status status-${type}`;
+  el.innerHTML = type === 'load'
+    ? `<span class="spinner"></span>${label}`
+    : label;
+}
+
+function setBtnsDisabled(idx, disabled) {
+  document.getElementById(`prev-${idx}`).disabled = disabled;
+  document.getElementById(`dl-${idx}`).disabled   = disabled;
+}
+
+// ── Preview ────────────────────────────────────────────────────────────────────
+async function previewFile(idx) {
+  const panel = document.getElementById(`preview-${idx}`);
+
+  // toggle off if already open and done
+  if (panel.classList.contains('open') && !document.getElementById(`prev-${idx}`).disabled) {
+    closePreview(idx);
+    return;
+  }
+
+  const { dpmm, width, height } = getSettings();
+  setStatus(idx, 'load', 'convertendo…');
+  setBtnsDisabled(idx, true);
+
+  try {
+    const blob = await convertZpl(zplFiles[idx].content, dpmm, width, height);
+    setStatus(idx, 'done', 'convertido');
+    setBtnsDisabled(idx, false);
+    await renderPdf(blob, document.getElementById(`canvas-wrap-${idx}`), idx);
+    panel.classList.add('open');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (err) {
+    setStatus(idx, 'error', 'erro');
+    setBtnsDisabled(idx, false);
+    showError(`[${zplFiles[idx].name}] ${err.message}`);
+  }
+}
+
+function closePreview(idx) {
+  document.getElementById(`preview-${idx}`).classList.remove('open');
+}
+
+async function renderPdf(blob, container, idx) {
+  const url = URL.createObjectURL(blob);
+  try {
+    const pdf = await pdfjsLib.getDocument(url).promise;
+    container.innerHTML = '';
+
+    document.getElementById(`preview-info-${idx}`).textContent =
+      `PDF · ${pdf.numPages} página${pdf.numPages !== 1 ? 's' : ''}`;
+
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page     = await pdf.getPage(p);
+      const viewport = page.getViewport({ scale: 1.8 });
+      const canvas   = document.createElement('canvas');
+      canvas.width   = viewport.width;
+      canvas.height  = viewport.height;
+      container.appendChild(canvas);
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    }
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+// ── Download single ────────────────────────────────────────────────────────────
+async function downloadFile(idx) {
+  const { dpmm, width, height } = getSettings();
+  setStatus(idx, 'load', 'gerando PDF…');
+  setBtnsDisabled(idx, true);
+
+  try {
+    const blob = await convertZpl(zplFiles[idx].content, dpmm, width, height);
+    setStatus(idx, 'done', 'baixado');
+    triggerDownload(blob, zplFiles[idx].name.replace(/\.zpl$/i, '.pdf'));
+  } catch (err) {
+    setStatus(idx, 'error', 'erro');
+    showError(`[${zplFiles[idx].name}] ${err.message}`);
+  } finally {
+    setBtnsDisabled(idx, false);
+  }
+}
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href    = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ── Download all ───────────────────────────────────────────────────────────────
+async function convertAll() {
+  if (!zplFiles.length) return;
+  const btn = document.getElementById('convertAllBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Convertendo…';
+
+  const { dpmm, width, height } = getSettings();
+  let ok = 0, failed = 0;
+
+  for (let idx = 0; idx < zplFiles.length; idx++) {
+    setStatus(idx, 'load', 'convertendo…');
+    setBtnsDisabled(idx, true);
+    try {
+      const blob = await convertZpl(zplFiles[idx].content, dpmm, width, height);
+      triggerDownload(blob, zplFiles[idx].name.replace(/\.zpl$/i, '.pdf'));
+      setStatus(idx, 'done', 'baixado');
+      ok++;
+    } catch (err) {
+      setStatus(idx, 'error', 'erro');
+      console.error(err);
+      failed++;
+    } finally {
+      setBtnsDisabled(idx, false);
+    }
+    // Respect Labelary rate limit: max 3 req/s
+    if (idx < zplFiles.length - 1) await sleep(400);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '⬇ Baixar Todos';
+
+  if (failed === 0) {
+    showInfo(`${ok} PDF${ok !== 1 ? 's' : ''} baixado${ok !== 1 ? 's' : ''} com sucesso.`);
+  } else {
+    showError(`${failed} arquivo(s) falharam. Verifique o console para detalhes.`);
+  }
+}
+
+// ── Clear ──────────────────────────────────────────────────────────────────────
+function clearAll() {
+  zplFiles = [];
+  document.getElementById('fileList').style.display = 'none';
+  document.getElementById('fileItems').innerHTML = '';
+  document.getElementById('uploadTitle').textContent = 'Arraste o arquivo .rar aqui';
+  document.getElementById('uploadSub').textContent   = 'ou clique para selecionar';
+  document.getElementById('fileInput').value = '';
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+</script>
+</body>
+</html>
