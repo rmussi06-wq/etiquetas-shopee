@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/libarchive.js@1.3.0/dist/libarchive.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -419,8 +420,8 @@
 <!-- ─────────────────────────── MAIN ────────────────────────────── -->
 <main class="main">
 
-  <!-- Worker URL notice (shown when URL is placeholder) -->
-  <div class="worker-notice" id="workerNotice">
+  <!-- Worker URL notice (shown only when URL is still a placeholder) -->
+  <div class="worker-notice" id="workerNotice" style="display:none">
     <span>⚠</span>
     <span>
       Worker URL não configurada. Faça o deploy do Worker e atualize
@@ -494,25 +495,21 @@
   <p>Powered by <strong>Labelary API</strong> · ZPL extraído no browser · nenhum arquivo enviado a terceiros</p>
 </footer>
 
-<script type="module">
-import { Archive } from 'https://cdnjs.cloudflare.com/ajax/libs/libarchive.js/1.3.0/libarchive.js';
-
+<script>
 // ── Config ─────────────────────────────────────────────────────────────────────
 const WORKER_URL = 'https://zpl-proxy.rmussi06.workers.dev';
 
-// ── Init CDNs ──────────────────────────────────────────────────────────────────
+// ── Init libarchive.js (UMD global loaded via <script src> no <head>) ──────────
 Archive.init({
-  workerUrl: 'https://cdnjs.cloudflare.com/ajax/libs/libarchive.js/1.3.0/worker-bundle.js'
+  workerUrl: 'https://cdn.jsdelivr.net/npm/libarchive.js@1.3.0/dist/worker-bundle.js'
 });
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// ── Show worker notice if URL not configured ───────────────────────────────────
+// ── Show worker notice only when URL is still a placeholder ───────────────────
 if (WORKER_URL.includes('SEU_USUARIO')) {
-  document.getElementById('workerNotice').classList.remove('hidden');
-} else {
-  document.getElementById('workerNotice').classList.add('hidden');
+  document.getElementById('workerNotice').style.display = 'flex';
 }
 
 // ── State ──────────────────────────────────────────────────────────────────────
@@ -822,13 +819,6 @@ function clearAll() {
 
 // ── Utils ──────────────────────────────────────────────────────────────────────
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-// Expose functions called by inline onclick handlers (required for module scope)
-window.previewFile  = previewFile;
-window.downloadFile = downloadFile;
-window.convertAll   = convertAll;
-window.clearAll     = clearAll;
-window.closePreview = closePreview;
 </script>
 </body>
 </html>
