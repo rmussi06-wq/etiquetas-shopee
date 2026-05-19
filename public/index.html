@@ -7,7 +7,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/libarchive.js/1.3.0/libarchive.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -493,9 +492,11 @@
   <p>Powered by <strong>Labelary API</strong> · ZPL extraído no browser · nenhum arquivo enviado a terceiros</p>
 </footer>
 
-<script>
+<script type="module">
+import { Archive } from 'https://cdnjs.cloudflare.com/ajax/libs/libarchive.js/1.3.0/libarchive.js';
+
 // ── Config ─────────────────────────────────────────────────────────────────────
-const WORKER_URL = 'https://zpl-proxy.SEU_USUARIO.workers.dev';
+const WORKER_URL = 'https://zpl-proxy.rmussi06.workers.dev';
 
 // ── Init CDNs ──────────────────────────────────────────────────────────────────
 Archive.init({
@@ -819,6 +820,13 @@ function clearAll() {
 
 // ── Utils ──────────────────────────────────────────────────────────────────────
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Expose functions called by inline onclick handlers (required for module scope)
+window.previewFile  = previewFile;
+window.downloadFile = downloadFile;
+window.convertAll   = convertAll;
+window.clearAll     = clearAll;
+window.closePreview = closePreview;
 </script>
 </body>
 </html>
